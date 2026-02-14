@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "neuro-viewer-tk"
+version = "0.4.0"
+description = "Medical image viewer for DICOM and NIfTI"
+requires-python = ">=3.10"
+dependencies = [
+    "pydicom>=2.3.0",
+    "numpy>=1.24.0",
+    "Pillow>=10.0.0",
+    "matplotlib>=3.7.0",
+    "nibabel>=5.2.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+lint = [
+    "ruff>=0.4.0",
+]
+dev = [
+    "neuro-viewer-tk[test,lint]",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

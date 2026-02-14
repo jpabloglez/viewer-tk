@@ -144,10 +144,11 @@ class ViewerController:
             model = DicomVolume()
             model.load(directory)
             self.root.after(0, self._on_directory_loaded, model, directory)
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to load DICOM directory")
+            msg = f"Failed to load directory:\n{directory}"
             self.root.after(
-                0, lambda: messagebox.showerror("Error", f"Failed to load directory:\n{exc}")
+                0, lambda: messagebox.showerror("Error", msg)
             )
             self.root.after(0, lambda: self._toolbar.set_loading(False))
             self.root.after(0, lambda: self._status_var.set("Load failed"))
@@ -172,10 +173,11 @@ class ViewerController:
             model = NiftiVolume()
             model.load(file_path)
             self.root.after(0, self._on_file_loaded, model, file_path)
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to load NIfTI file")
+            msg = f"Failed to load file:\n{file_path}"
             self.root.after(
-                0, lambda: messagebox.showerror("Error", f"Failed to load file:\n{exc}")
+                0, lambda: messagebox.showerror("Error", msg)
             )
             self.root.after(0, lambda: self._toolbar.set_loading(False))
             self.root.after(0, lambda: self._status_var.set("Load failed"))

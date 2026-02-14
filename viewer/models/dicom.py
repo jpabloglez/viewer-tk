@@ -92,8 +92,10 @@ class DicomVolume(ImageVolume):
         if ds is None:
             return None, None
         try:
-            center = float(ds.WindowCenter if not isinstance(ds.WindowCenter, pydicom.multival.MultiValue) else ds.WindowCenter[0])
-            width = float(ds.WindowWidth if not isinstance(ds.WindowWidth, pydicom.multival.MultiValue) else ds.WindowWidth[0])
+            wc = ds.WindowCenter
+            center = float(wc[0] if isinstance(wc, pydicom.multival.MultiValue) else wc)
+            ww = ds.WindowWidth
+            width = float(ww[0] if isinstance(ww, pydicom.multival.MultiValue) else ww)
             return center, width
         except (AttributeError, TypeError, IndexError):
             return None, None
