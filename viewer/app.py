@@ -4,6 +4,7 @@ import logging
 import tkinter as tk
 
 from .controllers.viewer import ViewerController
+from .utils.theme import apply_theme
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,8 @@ def run(directory: str | None = None, image: str | None = None) -> None:
     """Create the Tk root and launch the viewer."""
     root = tk.Tk()
     root.geometry("900x700")
+
+    apply_theme(root, "dark")
 
     controller = ViewerController(root)
 

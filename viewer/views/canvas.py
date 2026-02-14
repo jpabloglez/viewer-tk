@@ -34,6 +34,10 @@ class ImageCanvas(ttk.Frame):
         self._canvas.bind("<ButtonPress-2>", self._on_pan_start)
         self._canvas.bind("<B2-Motion>", self._on_pan_move)
 
+        # Cursor tracking
+        self._canvas.bind("<Motion>", self._on_motion)
+        self.on_cursor_move = None  # (img_x, img_y) -> None
+
     def display(self, pil_image: Image.Image) -> None:
         """Display *pil_image* on the canvas with current zoom/pan."""
         self._source_image = pil_image
@@ -111,3 +115,35 @@ class ImageCanvas(ttk.Frame):
         self._offset_y += dy
         self._drag_start = (event.x, event.y)
         self._render()
+
+    # --- cursor tracking ---
+    def _on_motion(self, event):
+        if self.on_cursor_move is None or self._source_image is None:
+            return
+        coords = self._canvas_to_image(event.x, event.y)
+        if coords:
+            self.on_cursor_move(*coords)
+
+    def _canvas_to_image(self, cx: int, cy: int) -> tuple[int, int] | None:
+        """Convert canvas pixel to source image pixel. Returns None if outside."""
+        if self._source_image is None or self._photo is None:
+            return None
+        cw = self._canvas.winfo_width()
+        ch = self._canvas.winfo_height()
+        # Center of displayed image on canvas
+        img_cx = cw // 2 + int(self._offset_x)
+        img_cy = ch // 2 + int(self._offset_y)
+        # Displayed image size
+        dw = self._photo.width()
+        dh = self._photo.height()
+        # Position relative to displayed image top-left
+        rx = cx - (img_cx - dw // 2)
+        ry = cy - (img_cy - dh // 2)
+        if rx < 0 or ry < 0 or rx >= dw or ry >= dh:
+            return None
+        # Scale back to source image coords
+        src_x = int(rx * self._source_image.width / dw)
+        src_y = int(ry * self._source_image.height / dh)
+        src_x = min(src_x, self._source_image.width - 1)
+        src_y = min(src_y, self._source_image.height - 1)
+        return src_x, src_y

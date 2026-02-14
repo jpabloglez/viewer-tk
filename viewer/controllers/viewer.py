@@ -16,8 +16,10 @@ from ..utils.normalization import (
     apply_window_level,
     normalize_min_max,
 )
+from ..utils.theme import apply_font, apply_theme
 from ..views.canvas import ImageCanvas
 from ..views.info_bar import InfoBar
+from ..views.menubar import MenuBar
 from ..views.metadata import MetadataWindow
 from ..views.multi_canvas import MultiAxisCanvas
 from ..views.toolbar import Toolbar
@@ -68,6 +70,18 @@ class ViewerController:
         )
         self._status_bar.pack(fill=tk.X, side=tk.BOTTOM)
 
+        # --- menu bar ---
+        self._menubar = MenuBar(root)
+        self._menubar.on_open_dir = self.open_directory
+        self._menubar.on_open_file = self.open_file
+        self._menubar.on_exit = root.destroy
+        self._menubar.on_metadata = self._show_metadata
+        self._menubar.on_reset_zoom = self._reset_zoom
+        self._menubar.on_window_preset = self._on_window_preset
+        self._menubar.on_theme_change = lambda name: apply_theme(root, name)
+        self._menubar.on_font_size = lambda size: apply_font(root, size=size)
+        self._menubar.on_font_weight = lambda wt: apply_font(root, weight=wt)
+
         # --- toolbar callbacks ---
         self._toolbar.on_open_dir = self.open_directory
         self._toolbar.on_open_file = self.open_file
@@ -78,11 +92,20 @@ class ViewerController:
         self._toolbar.on_zoom_fit = self._canvas.fit_view
         self._toolbar.on_zoom_actual = self._canvas.actual_size
 
+        # --- cursor tracking ---
+        self._canvas.on_cursor_move = self._on_cursor_move
+        self._last_raw_slice = None  # cache for pixel value lookup
+
         # --- key bindings ---
         root.bind("<Left>", lambda e: self._step(-1))
         root.bind("<Right>", lambda e: self._step(1))
         root.bind("<Home>", lambda e: self._goto(0))
         root.bind("<End>", lambda e: self._goto_end())
+        root.bind("<Control-o>", lambda e: self.open_directory())
+        root.bind("<Control-O>", lambda e: self.open_file())
+        root.bind("<Control-m>", lambda e: self._show_metadata())
+        root.bind("<Control-0>", lambda e: self._reset_zoom())
+        root.bind("<Control-q>", lambda e: root.destroy())
 
     # ------------------------------------------------------------------
     # Public API
@@ -279,6 +302,7 @@ class ViewerController:
             return
 
         raw = self._model.get_slice(self._current_slice, self._current_axis)
+        self._last_raw_slice = raw
         img = self._apply_pipeline(raw)
         self._canvas.display(img)
         self._toolbar.update_zoom_label(self._canvas.zoom_percent)
@@ -336,6 +360,13 @@ class ViewerController:
     # Toolbar callbacks
     # ------------------------------------------------------------------
 
+    def _reset_zoom(self) -> None:
+        """Reset zoom for whichever view mode is active."""
+        if self._is_multi_axis and self._multi_canvas is not None:
+            self._multi_canvas.reset_view()
+        else:
+            self._canvas.reset_view()
+
     def _on_window_preset(self, name: str) -> None:
         if name == "Auto":
             self._window_center = None
@@ -353,6 +384,18 @@ class ViewerController:
     def _on_colormap(self, cmap: str) -> None:
         self._colormap = cmap
         self._render_slice()
+
+    def _on_cursor_move(self, img_x: int, img_y: int) -> None:
+        """Update status bar with pixel coordinates and intensity."""
+        if self._last_raw_slice is None:
+            return
+        h, w = self._last_raw_slice.shape[:2]
+        if 0 <= img_x < w and 0 <= img_y < h:
+            val = self._last_raw_slice[img_y, img_x]
+            self._status_var.set(
+                f"({img_x}, {img_y})  Value: {val:.1f}  |  "
+                f"Dims: {w}x{h}  Zoom: {self._canvas.zoom_percent}%"
+            )
 
     def on_resize(self, _event=None) -> None:
         self._render_slice()

@@ -48,12 +48,18 @@ class DicomVolume(ImageVolume):
         self._files.sort(key=sort_key)
 
     def get_slice(self, index: int, axis: int = 2) -> np.ndarray:
-        """Read pixel data for slice *index*, apply rescale slope/intercept."""
+        """Read pixel data for slice *index*, apply rescale slope/intercept.
+
+        Applies horizontal flip for radiological convention (LPS):
+        patient's left appears on the viewer's right side.
+        """
         img = self._read_pixel_data(index)
         ds = pydicom.dcmread(self._files[index], stop_before_pixels=True)
         self._current_ds = ds
         if "RescaleSlope" in ds and "RescaleIntercept" in ds:
             img = img.astype(np.float64) * float(ds.RescaleSlope) + float(ds.RescaleIntercept)
+        # Radiological convention: flip L-R so patient left is on viewer right
+        img = np.fliplr(img)
         return img
 
     @lru_cache(maxsize=64)
@@ -77,6 +83,7 @@ class DicomVolume(ImageVolume):
             "Patient Age": str(ds.get("PatientAge", "N/A")),
             "Modality": str(ds.get("Modality", "N/A")),
             "Series Description": str(ds.get("SeriesDescription", "N/A")),
+            "Orientation": "LPS (radiological)",
         }
 
     def get_window_defaults(self) -> tuple[float | None, float | None]:
