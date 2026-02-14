@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 import nibabel as nib
@@ -18,6 +20,11 @@ class NiftiVolume(ImageVolume):
     def load(self, path: str) -> None:
         self._img = nib.load(path)
         self._data = self._img.get_fdata()
+        if self._data.ndim < 3:
+            raise ValueError(
+                f"NIfTI volume must be at least 3D, got {self._data.ndim}D "
+                f"with shape {self._data.shape}"
+            )
         logger.info(
             "Loaded NIfTI %s — shape %s, dtype %s",
             path, self._data.shape, self._data.dtype,

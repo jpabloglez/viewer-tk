@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import tkinter as tk
 
@@ -24,6 +26,13 @@ def run(directory: str | None = None, image: str | None = None) -> None:
             _resize_id = root.after(150, controller.on_resize)
 
     root.bind("<Configure>", _on_configure)
+
+    # Graceful shutdown
+    def _on_close():
+        logger.info("Shutting down")
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", _on_close)
 
     # Auto-load if paths given via CLI
     if directory:
