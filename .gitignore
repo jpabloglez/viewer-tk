@@ -1,1 +1,18 @@
 sample/
+docs/tasks/
+
+# Ignore all .txt files
+*.txt
+# Ignore all .log files in the logs directory
+logs/*.log
+
+# Ingnore env files
+.env
+.env.local
+
+# Ignore python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
