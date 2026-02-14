@@ -22,6 +22,7 @@ class MenuBar(tk.Menu):
         self.on_metadata = None
         self.on_reset_zoom = None
         self.on_window_preset = None
+        self.on_histogram = None        # () -> None
         self.on_theme_change = None     # (name: str) -> None
         self.on_font_size = None        # (size: int) -> None
         self.on_font_weight = None      # (weight: str) -> None
@@ -112,6 +113,12 @@ class MenuBar(tk.Menu):
                 command=lambda n=name: self._preset(n),
             )
         tools_menu.add_cascade(label="Window Presets", menu=presets_menu)
+        tools_menu.add_separator()
+        tools_menu.add_command(
+            label="Histogram",
+            accelerator="Ctrl+H",
+            command=self._histogram,
+        )
         self.add_cascade(label="Tools", menu=tools_menu)
 
     # --- internal callbacks ---
@@ -138,6 +145,10 @@ class MenuBar(tk.Menu):
     def _preset(self, name: str):
         if self.on_window_preset:
             self.on_window_preset(name)
+
+    def _histogram(self):
+        if self.on_histogram:
+            self.on_histogram()
 
     def _on_theme(self):
         if self.on_theme_change:

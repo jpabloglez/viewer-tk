@@ -25,6 +25,7 @@ class Toolbar(ttk.Frame):
         self.on_window_preset = None
         self.on_window_manual = None
         self.on_colormap = None
+        self.on_histogram = None
         self.on_zoom_fit = None
         self.on_zoom_actual = None
 
@@ -40,6 +41,9 @@ class Toolbar(ttk.Frame):
 
         self._btn_metadata = ttk.Button(row0, text="Metadata", command=self._metadata)
         self._btn_metadata.pack(side=tk.LEFT, padx=2)
+
+        self._btn_histogram = ttk.Button(row0, text="Histogram", command=self._histogram)
+        self._btn_histogram.pack(side=tk.LEFT, padx=2)
 
         ttk.Separator(row0, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=6)
 
@@ -132,6 +136,10 @@ class Toolbar(ttk.Frame):
     def _metadata(self):
         if self.on_metadata:
             self.on_metadata()
+
+    def _histogram(self):
+        if self.on_histogram:
+            self.on_histogram()
 
     def _on_window_change(self, _event=None):
         if self.on_window_preset:

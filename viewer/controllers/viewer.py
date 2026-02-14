@@ -18,6 +18,7 @@ from ..utils.normalization import (
 )
 from ..utils.theme import apply_font, apply_theme
 from ..views.canvas import ImageCanvas
+from ..views.histogram import HistogramWindow
 from ..views.info_bar import InfoBar
 from ..views.menubar import MenuBar
 from ..views.metadata import MetadataWindow
@@ -78,6 +79,7 @@ class ViewerController:
         self._menubar.on_metadata = self._show_metadata
         self._menubar.on_reset_zoom = self._reset_zoom
         self._menubar.on_window_preset = self._on_window_preset
+        self._menubar.on_histogram = self._show_histogram
         self._menubar.on_theme_change = lambda name: apply_theme(root, name)
         self._menubar.on_font_size = lambda size: apply_font(root, size=size)
         self._menubar.on_font_weight = lambda wt: apply_font(root, weight=wt)
@@ -86,6 +88,7 @@ class ViewerController:
         self._toolbar.on_open_dir = self.open_directory
         self._toolbar.on_open_file = self.open_file
         self._toolbar.on_metadata = self._show_metadata
+        self._toolbar.on_histogram = self._show_histogram
         self._toolbar.on_window_preset = self._on_window_preset
         self._toolbar.on_colormap = self._on_colormap
         self._toolbar.on_window_manual = self._on_window_manual
@@ -104,6 +107,7 @@ class ViewerController:
         root.bind("<Control-o>", lambda e: self.open_directory())
         root.bind("<Control-O>", lambda e: self.open_file())
         root.bind("<Control-m>", lambda e: self._show_metadata())
+        root.bind("<Control-h>", lambda e: self._show_histogram())
         root.bind("<Control-0>", lambda e: self._reset_zoom())
         root.bind("<Control-q>", lambda e: root.destroy())
 
@@ -357,6 +361,24 @@ class ViewerController:
             return
         win = tk.Toplevel(self.root)
         MetadataWindow(win, meta)
+
+    def _show_histogram(self) -> None:
+        if self._model is None:
+            messagebox.showinfo("Info", "Load an image first.")
+            return
+        if self._last_raw_slice is None:
+            # Fetch current slice raw data
+            if self._is_multi_axis:
+                raw = self._model.get_slice(self._axis_slices[2], axis=2)
+            else:
+                raw = self._model.get_slice(
+                    self._current_slice, self._current_axis
+                )
+        else:
+            raw = self._last_raw_slice
+        title = f"Slice {self._current_slice + 1}" if not self._is_multi_axis else "Axial"
+        win = tk.Toplevel(self.root)
+        HistogramWindow(win, raw, title=title)
 
     # ------------------------------------------------------------------
     # Toolbar callbacks
