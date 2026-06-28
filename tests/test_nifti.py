@@ -75,9 +75,9 @@ class TestNiftiSlicing:
         s = volume.get_slice(0, axis=2)
         assert s.ndim == 2
 
-    def test_get_slice_dtype_float64(self, volume):
+    def test_get_slice_dtype_float32(self, volume):
         s = volume.get_slice(0, axis=0)
-        assert s.dtype == np.float64
+        assert s.dtype == np.float32
 
     def test_get_slice_rotated(self, volume):
         """After rot90, dimensions should be swapped compared to raw slicing."""

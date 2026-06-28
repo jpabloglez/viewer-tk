@@ -37,20 +37,15 @@ PALETTES = {"dark": DARK, "light": LIGHT}
 # ---------------------------------------------------------------------------
 
 _current_theme = "dark"
-_current_font_size = 10
-_current_font_weight = "normal"
+
+# Base UI font, applied once at startup. Font is not user-configurable: live font
+# resizing proved unreliable on X11/WSL2 (style changes don't repaint), so the menu
+# option was removed in favour of a single consistent base font.
+_BASE_FONT_SIZE = 10
 
 
 def get_current_theme() -> str:
     return _current_theme
-
-
-def get_current_font_size() -> int:
-    return _current_font_size
-
-
-def get_current_font_weight() -> str:
-    return _current_font_weight
 
 
 def apply_theme(root: tk.Tk, name: str = "dark") -> None:
@@ -129,46 +124,22 @@ def apply_theme(root: tk.Tk, name: str = "dark") -> None:
     root.option_add("*Label.background", p["bg"])
     root.option_add("*Label.foreground", p["fg"])
 
-    # Re-apply font with current settings
-    apply_font(root, _current_font_size, _current_font_weight)
+    # Apply the consistent base font
+    _apply_base_font(root)
 
 
-def apply_font(root: tk.Tk, size: int | None = None, weight: str | None = None) -> None:
-    """Apply font size and/or weight globally. Preserves current value for unset params."""
-    global _current_font_size, _current_font_weight
-    if size is not None:
-        _current_font_size = size
-    if weight is not None:
-        _current_font_weight = weight
-    size = _current_font_size
-    weight = _current_font_weight
-
-    # Update all named fonts — auto-propagates to widgets referencing them
+def _apply_base_font(root: tk.Tk) -> None:
+    """Set a single consistent base font on named fonts and ttk styles (startup only)."""
     for name in ("TkDefaultFont", "TkTextFont", "TkFixedFont",
                  "TkMenuFont", "TkHeadingFont", "TkCaptionFont"):
         try:
-            tkfont.nametofont(name).configure(size=size, weight=weight)
+            tkfont.nametofont(name).configure(size=_BASE_FONT_SIZE)
         except tk.TclError:
             pass
 
-    # Update ttk styles
-    default_font = tkfont.nametofont("TkDefaultFont")
+    family = tkfont.nametofont("TkDefaultFont").cget("family")
+    font_tuple = (family, _BASE_FONT_SIZE)
     style = ttk.Style(root)
-    font_tuple = (default_font.cget("family"), size, weight)
     style.configure(".", font=font_tuple)
-    style.configure("Treeview", font=font_tuple, rowheight=int(size * 2.2))
-    style.configure("Treeview.Heading", font=(default_font.cget("family"), size, "bold"))
-
-    # Force font on all existing tk widgets (named font changes don't always
-    # propagate on all platforms, e.g. WSL2/X11)
-    _apply_font_recursive(root, font_tuple)
-
-
-def _apply_font_recursive(widget: tk.Widget, font_tuple: tuple) -> None:
-    """Walk the widget tree and explicitly set font on every widget that supports it."""
-    try:
-        widget.configure(font=font_tuple)
-    except tk.TclError:
-        pass  # widget doesn't support font option
-    for child in widget.winfo_children():
-        _apply_font_recursive(child, font_tuple)
+    style.configure("Treeview", font=font_tuple, rowheight=int(_BASE_FONT_SIZE * 2.2))
+    style.configure("Treeview.Heading", font=(family, _BASE_FONT_SIZE, "bold"))

@@ -15,4 +15,4 @@ def resize_to_fit(img: Image.Image, max_w: int, max_h: int) -> Image.Image:
         new_w = int(new_h * aspect)
     if new_w <= 0 or new_h <= 0:
         return img
-    return img.resize((new_w, new_h), Image.LANCZOS)
+    return img.resize((new_w, new_h), Image.Resampling.LANCZOS)

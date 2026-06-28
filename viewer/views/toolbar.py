@@ -28,6 +28,9 @@ class Toolbar(ttk.Frame):
         self.on_histogram = None
         self.on_zoom_fit = None
         self.on_zoom_actual = None
+        self.on_auto_wl = None         # () -> None
+        self.on_toggle_invert = None   # () -> None
+        self.on_toggle_measure = None  # () -> None
 
         # --- Row 0: buttons + presets + colormap + zoom ---
         row0 = ttk.Frame(self)
@@ -72,6 +75,27 @@ class Toolbar(ttk.Frame):
 
         ttk.Separator(row0, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=6)
 
+        ttk.Separator(row0, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=6)
+
+        # Auto W/L
+        ttk.Button(row0, text="Auto W/L", command=self._auto_wl).pack(side=tk.LEFT, padx=2)
+
+        # Invert toggle
+        self._invert_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            row0, text="Invert", variable=self._invert_var,
+            command=self._toggle_invert,
+        ).pack(side=tk.LEFT, padx=2)
+
+        # Measure toggle
+        self._measure_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            row0, text="Measure", variable=self._measure_var,
+            command=self._toggle_measure,
+        ).pack(side=tk.LEFT, padx=2)
+
+        ttk.Separator(row0, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=6)
+
         # Zoom
         self._btn_fit = ttk.Button(row0, text="Fit", command=self._zoom_fit)
         self._btn_fit.pack(side=tk.LEFT, padx=2)
@@ -103,6 +127,9 @@ class Toolbar(ttk.Frame):
             showvalue=True, length=150,
         )
         self._width_slider.pack(side=tk.LEFT, padx=2)
+
+    def set_colormap(self, cmap: str) -> None:
+        self._cmap_var.set(cmap)
 
     def update_zoom_label(self, percent: int) -> None:
         self._zoom_label.config(text=f"{percent}%")
@@ -158,6 +185,18 @@ class Toolbar(ttk.Frame):
     def _on_cmap_change(self, _event=None):
         if self.on_colormap:
             self.on_colormap(self._cmap_var.get())
+
+    def _auto_wl(self):
+        if self.on_auto_wl:
+            self.on_auto_wl()
+
+    def _toggle_invert(self):
+        if self.on_toggle_invert:
+            self.on_toggle_invert(self._invert_var.get())
+
+    def _toggle_measure(self):
+        if self.on_toggle_measure:
+            self.on_toggle_measure(self._measure_var.get())
 
     def _zoom_fit(self):
         if self.on_zoom_fit:

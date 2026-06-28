@@ -4,17 +4,39 @@ import tkinter as tk
 from tkinter import ttk
 
 import numpy as np
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
+
+try:
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    from matplotlib.figure import Figure
+    _HAS_MATPLOTLIB = True
+except ImportError:
+    _HAS_MATPLOTLIB = False
 
 
 class HistogramWindow:
-    """Histogram window showing intensity distribution in linear and log scale."""
+    """Histogram window showing intensity distribution in linear and log scale.
+
+    Requires matplotlib (optional dependency). Shows an install hint when absent.
+    """
 
     def __init__(self, master: tk.Toplevel, data: np.ndarray, title: str = ""):
         self.master = master
         self.master.title("Histogram" + (f" — {title}" if title else ""))
         self.master.geometry("700x500")
+
+        if not _HAS_MATPLOTLIB:
+            ttk.Label(
+                master,
+                text=(
+                    "matplotlib is required for the histogram view.\n\n"
+                    "Install it with:\n\n"
+                    "    pip install matplotlib\n\n"
+                    "or:\n\n"
+                    "    pip install neuro-viewer-tk[plot]"
+                ),
+                justify=tk.CENTER,
+            ).pack(expand=True)
+            return
 
         self._data = data.ravel()
         self._bins = 256
@@ -27,32 +49,26 @@ class HistogramWindow:
         self._bins_var = tk.IntVar(value=256)
         bins_combo = ttk.Combobox(
             ctrl, textvariable=self._bins_var,
-            values=[64, 128, 256, 512, 1024], state="readonly", width=6,
+            values=["64", "128", "256", "512", "1024"], state="readonly", width=6,
         )
         bins_combo.pack(side=tk.LEFT, padx=2)
         bins_combo.bind("<<ComboboxSelected>>", lambda _: self._update())
 
-        ttk.Separator(ctrl, orient=tk.VERTICAL).pack(
-            side=tk.LEFT, fill=tk.Y, padx=8
-        )
+        ttk.Separator(ctrl, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=8)
 
-        # Stats
         mn, mx = float(np.min(self._data)), float(np.max(self._data))
         mean = float(np.mean(self._data))
         std = float(np.std(self._data))
         stats_text = f"Min: {mn:.1f}  Max: {mx:.1f}  Mean: {mean:.1f}  Std: {std:.1f}"
         ttk.Label(ctrl, text=stats_text).pack(side=tk.LEFT, padx=4)
 
-        # Matplotlib figure with two subplots
         self._fig = Figure(figsize=(7, 4.5), dpi=100)
         self._fig.set_facecolor("#2b2b2b")
         self._ax_lin = self._fig.add_subplot(211)
         self._ax_log = self._fig.add_subplot(212)
 
         self._canvas_widget = FigureCanvasTkAgg(self._fig, master=master)
-        self._canvas_widget.get_tk_widget().pack(
-            fill=tk.BOTH, expand=True, padx=8, pady=8
-        )
+        self._canvas_widget.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
         self._update()
 
@@ -66,7 +82,6 @@ class HistogramWindow:
             for spine in ax.spines.values():
                 spine.set_color("#3c3c3c")
 
-        # Linear scale
         self._ax_lin.hist(
             self._data, bins=self._bins, color="#4a9eff",
             edgecolor="#2b2b2b", linewidth=0.3, alpha=0.85,
@@ -74,7 +89,6 @@ class HistogramWindow:
         self._ax_lin.set_title("Linear Scale", color="#d4d4d4", fontsize=10)
         self._ax_lin.set_ylabel("Count", color="#d4d4d4", fontsize=9)
 
-        # Logarithmic scale
         self._ax_log.hist(
             self._data, bins=self._bins, color="#4a9eff",
             edgecolor="#2b2b2b", linewidth=0.3, alpha=0.85,
@@ -89,5 +103,7 @@ class HistogramWindow:
 
     def update_data(self, data: np.ndarray) -> None:
         """Update histogram with new slice data."""
+        if not _HAS_MATPLOTLIB:
+            return
         self._data = data.ravel()
         self._update()

@@ -4,7 +4,6 @@ import logging
 import tkinter as tk
 
 from .controllers.viewer import ViewerController
-from .utils.theme import apply_theme
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +13,7 @@ def run(directory: str | None = None, image: str | None = None) -> None:
     root = tk.Tk()
     root.geometry("900x700")
 
-    apply_theme(root, "dark")
-
-    controller = ViewerController(root)
+    controller = ViewerController(root)  # loads prefs and applies theme/font
 
     # Debounced resize — avoid re-rendering on every pixel change
     _resize_id = None
