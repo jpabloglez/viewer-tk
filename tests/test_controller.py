@@ -196,6 +196,31 @@ class TestControllerNifti:
         finally:
             _destroy(root)
 
+    def test_open_file_threaded_path_renders(self, tmp_path):
+        """Regression: the full open_file → worker thread → queue → poller path must
+        update the UI. Worker threads cannot call root.after() directly (silently
+        dropped on Tcl 9.0); this guards that the queue marshalling actually delivers.
+        """
+        import time
+
+        root = _make_root()
+        try:
+            from viewer.controllers.viewer import ViewerController
+            ctrl = ViewerController(root)
+            path = _nifti_file(tmp_path)
+            ctrl.open_file(path)  # spawns background thread + starts poller
+            # Pump the event loop until the poller delivers the result (or time out)
+            deadline = time.time() + 10.0
+            while time.time() < deadline and not ctrl._is_multi_axis:
+                root.update()
+                time.sleep(0.02)
+            assert ctrl._is_multi_axis, "load never reached the UI (cross-thread after dropped?)"
+            assert ctrl._multi_canvas is not None
+            assert set(ctrl._last_raw_per_axis) == {0, 1, 2}
+            assert not ctrl._progress_bar.winfo_ismapped()  # progress bar hidden on completion
+        finally:
+            _destroy(root)
+
     def test_crosshair_click_updates_slices(self, tmp_path):
         root = _make_root()
         try:

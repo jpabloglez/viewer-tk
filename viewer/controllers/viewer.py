@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import queue
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -73,6 +74,13 @@ class ViewerController:
         self._current_volume = 0
         # Per-axis raw slice cache for cursor readout and histogram
         self._last_raw_per_axis: dict[int, np.ndarray] = {}
+
+        # Background-load → UI marshalling. Worker threads MUST NOT call root.after()
+        # directly: Tcl is not thread-safe and cross-thread after() is silently dropped
+        # (notably on Tcl 9.0). Instead they push messages onto this queue and the main
+        # thread drains it via a poller scheduled with after() from the main thread.
+        self._load_queue: queue.Queue = queue.Queue()
+        self._polling = False
 
         # Load persisted preferences before building UI
         self._prefs = load_prefs()
@@ -207,6 +215,8 @@ class ViewerController:
             return
         self._toolbar.set_loading(True)
         self._status_var.set(status_loading_dicom(directory))
+        self._show_progress_bar(mode="determinate")
+        self._start_poll()
         threading.Thread(
             target=self._load_directory_bg, args=(directory,), daemon=True
         ).start()
@@ -221,30 +231,65 @@ class ViewerController:
         self._toolbar.set_loading(True)
         self._status_var.set(status_loading_nifti(file_path))
         self._show_progress_bar(mode="indeterminate")
+        self._start_poll()
         threading.Thread(
             target=self._load_file_bg, args=(file_path,), daemon=True
         ).start()
 
     # ------------------------------------------------------------------
     # Background loading
+    #
+    # Worker threads communicate ONLY via self._load_queue; the main-thread
+    # poller (_poll_load_queue) drains it and invokes the UI handlers.
     # ------------------------------------------------------------------
+
+    def _start_poll(self) -> None:
+        if not self._polling:
+            self._polling = True
+            self.root.after(60, self._poll_load_queue)
+
+    def _poll_load_queue(self) -> None:
+        try:
+            while True:
+                msg = self._load_queue.get_nowait()
+                self._dispatch_load_msg(msg)
+        except queue.Empty:
+            pass
+        if self._polling:
+            self.root.after(60, self._poll_load_queue)
+
+    def _dispatch_load_msg(self, msg: tuple) -> None:
+        kind = msg[0]
+        if kind == "progress":
+            self._on_load_progress(msg[1], msg[2])
+        elif kind == "loaded_dir":
+            self._polling = False
+            self._on_directory_loaded(msg[1], msg[2])
+        elif kind == "loaded_file":
+            self._polling = False
+            self._on_file_loaded(msg[1], msg[2])
+        elif kind == "error":
+            self._polling = False
+            self._on_load_error(msg[1])
+
+    def _on_load_error(self, path: str) -> None:
+        messagebox.showerror("Error", msg_load_failed(path))
+        self._toolbar.set_loading(False)
+        self._hide_progress_bar()
+        self._status_var.set(STATUS_LOAD_FAILED)
 
     def _load_directory_bg(self, directory: str) -> None:
         try:
             model = DicomVolume()
 
             def _progress(done: int, total: int) -> None:
-                self.root.after(0, self._on_load_progress, done, total)
+                self._load_queue.put(("progress", done, total))
 
-            self.root.after(0, self._show_progress_bar)
             model.load(directory, progress_callback=_progress)
-            self.root.after(0, self._on_directory_loaded, model, directory)
+            self._load_queue.put(("loaded_dir", model, directory))
         except Exception:
             logger.exception("Failed to load DICOM directory")
-            self.root.after(0, lambda: messagebox.showerror("Error", msg_load_failed(directory)))
-            self.root.after(0, lambda: self._toolbar.set_loading(False))
-            self.root.after(0, self._hide_progress_bar)
-            self.root.after(0, lambda: self._status_var.set(STATUS_LOAD_FAILED))
+            self._load_queue.put(("error", directory))
 
     def _on_directory_loaded(self, model: DicomVolume, path: str) -> None:
         self._model = model
@@ -272,13 +317,10 @@ class ViewerController:
         try:
             model = NiftiVolume()
             model.load(file_path)
-            self.root.after(0, self._on_file_loaded, model, file_path)
+            self._load_queue.put(("loaded_file", model, file_path))
         except Exception:
             logger.exception("Failed to load NIfTI file")
-            self.root.after(0, lambda: messagebox.showerror("Error", msg_load_failed(file_path)))
-            self.root.after(0, lambda: self._toolbar.set_loading(False))
-            self.root.after(0, self._hide_progress_bar)
-            self.root.after(0, lambda: self._status_var.set(STATUS_LOAD_FAILED))
+            self._load_queue.put(("error", file_path))
 
     def _on_file_loaded(self, model: NiftiVolume, path: str) -> None:
         self._model = model
