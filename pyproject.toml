@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuro-viewer-tk"
@@ -11,21 +11,30 @@ dependencies = [
     "pydicom>=2.3.0",
     "numpy>=1.24.0",
     "Pillow>=10.0.0",
-    "matplotlib>=3.7.0",
     "nibabel>=5.2.0",
 ]
 
+[project.scripts]
+viewer-tk = "viewer.__main__:main"
+
 [project.optional-dependencies]
+plot = [
+    "matplotlib>=3.7.0",
+]
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
 ]
 lint = [
     "ruff>=0.4.0",
+    "mypy>=1.8.0",
 ]
 dev = [
-    "neuro-viewer-tk[test,lint]",
+    "neuro-viewer-tk[test,lint,plot]",
 ]
+
+[tool.setuptools.packages.find]
+include = ["viewer*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
