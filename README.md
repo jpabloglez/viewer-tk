@@ -8,6 +8,9 @@ A desktop medical image viewer for DICOM and NIfTI formats built with Tkinter. D
 
 ![ViewerTK](docs/ViewerTK.png)
 
+**▶ [![Watch the demo]](https://github.com/jpabloglez/viewer-tk/blob/main/docs/recording-viewer-tk.webp)**
+
+
 ## Features
 
 ### Image Loading
